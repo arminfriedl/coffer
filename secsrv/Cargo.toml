@@ -1,0 +1,18 @@
+[package]
+name = "secsrv"
+version = "0.1.0"
+authors = ["Armin Friedl <dev@friedl.net>"]
+edition = "2018"
+
+[dependencies]
+# Base tools
+log = "0.4"
+env_logger="0.7"
+structopt = "0.3"
+# Key management/Cryptography 
+sodiumoxide = "0.2.5"
+# Communication
+serde = { version = "1.0", features = ["derive"]}
+serde_cbor = "0.10.2"
+toml = "0.5"
+futures = { version = "0.3.1", features = ["thread-pool"]}

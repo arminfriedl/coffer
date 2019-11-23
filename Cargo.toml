@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+        "secsrv",
+        "secsrv-companion",
+        "secsrv-client"
+]
