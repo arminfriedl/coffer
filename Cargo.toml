@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-        "secsrv",
-        "secsrv-companion",
-        "secsrv-client"
+        "coffer-server",
+        "coffer-client",
+        "coffer-companion"
 ]
