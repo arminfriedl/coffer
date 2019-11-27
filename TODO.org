@@ -1,0 +1,15 @@
+* General
+** TODO Add a license
+** TODO Better communication protocol
+* Coffer Server
+* Coffer Client
+** DONE Set environment variables
+   CLOSED: [2019-11-27 Wed 22:51]
+** TODO Send key requests encrypted/signed
+* Coffer Companion
+** TODO Add Subcommands
+   - [ ] Generate master key
+   - [ ] Generate client key
+   - [ ] Encrypt/Decrypt secrets with master key
+   - [ ] Encrypt/Decrypt key request with client key
+   - [ ] Generate trampolin sh from dockerfile

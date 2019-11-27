@@ -1,6 +1,6 @@
 [package]
 name = "coffer-client"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Armin Friedl <dev@friedl.net>"]
 edition = "2018"
 
@@ -15,3 +15,5 @@ structopt = "0.3"
 serde = { version = "1.0", features = ["derive"]}
 serde_yaml = "0.8"
 serde_cbor = "0.10.2"
+# Executing subcommand
+exec = "0.3.1"
