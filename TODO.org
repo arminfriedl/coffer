@@ -1,7 +1,13 @@
 * General
 ** TODO Add a license
 ** TODO Better communication protocol
+** TODO Add tests
 * Coffer Server
+** TODO Add secrets on-the-fly
+** TODO Store secrets in secure memory
+   - Not persisted
+   - Nulled out
+   - Optional encrypted
 * Coffer Client
 ** DONE Set environment variables
    CLOSED: [2019-11-27 Wed 22:51]

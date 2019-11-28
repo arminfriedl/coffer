@@ -1,48 +1,35 @@
-use serde::{Deserialize, Serialize};
-use sodiumoxide::crypto::box_;
-use sodiumoxide::crypto::sealedbox;
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
+use structopt::StructOpt;
 
-#[derive(Debug, Serialize, Deserialize)]
-struct MasterKey {
-    public_key: box_::PublicKey,
-    secret_key: box_::SecretKey,
+mod generate;
+mod encrypt;
+
+#[derive(StructOpt, Debug)]
+enum Args {
+    Generate {
+        #[structopt(short, long, parse(from_os_str))]
+        out: PathBuf
+    },
+    Encrypt {
+        #[structopt(short, long, parse(from_os_str))]
+        yaml: PathBuf,
+        #[structopt(short, long, parse(from_os_str))]
+        out: PathBuf,
+        #[structopt(short, long, parse(from_os_str))]
+        masterkey: PathBuf,
+    }
 }
-
-struct ClientKey {
-    id: String,
-    public_key: box_::PublicKey,
-}
-
-pub type Secrets = HashMap<String, String>;
-pub type Secs = Vec<String>;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let keypair = box_::gen_keypair();
-    let masterkey: MasterKey = MasterKey {
-        public_key: keypair.0,
-        secret_key: keypair.1,
-    };
+    let args: Args = Args::from_args();
 
-    let f = File::create("./masterkey.cbor")?;
-    serde_cbor::to_writer(f, &masterkey)?;
-
-    let secrets: Secrets = [
-        ("ABC".to_owned(), "DEF".to_owned()),
-        ("XYZ".to_owned(), "ABC".to_owned()),
-    ]
-    .iter()
-    .cloned()
-    .collect();
-
-    let sc_res = serde_cbor::to_vec(&secrets)?;
-    let sc_res = sealedbox::seal(&sc_res, &masterkey.public_key);
-    let mut f = File::create("./secrets.cbor")?;
-    f.write(&sc_res)?;
-    f.flush()?;
+    match args {
+        Args::Generate {out} => generate::generate_key(out),
+        Args::Encrypt {yaml, out, masterkey} => encrypt::generate_encrypted_secrets(yaml, out, masterkey)
+    }
 
     let secreta = "ABC".to_owned();
     let mut f = File::create("./keyreq_a.cbor")?;
