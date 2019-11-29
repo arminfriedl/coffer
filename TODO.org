@@ -2,6 +2,7 @@
 ** TODO Add a license
 ** TODO Better communication protocol
 ** TODO Add tests
+** TODO Readme
 * Coffer Server
 ** TODO Add secrets on-the-fly
 ** TODO Store secrets in secure memory
@@ -14,8 +15,10 @@
 ** TODO Send key requests encrypted/signed
 * Coffer Companion
 ** TODO Add Subcommands
-   - [ ] Generate master key
+   - [X] Generate master key
    - [ ] Generate client key
-   - [ ] Encrypt/Decrypt secrets with master key
-   - [ ] Encrypt/Decrypt key request with client key
+   - [X] Encrypt secrets with master key
+   - [ ] Decrypt secrets with master key
+   - [ ] Encrypt key request with client key
+   - [ ] Decrypt key request with client key
    - [ ] Generate trampolin sh from dockerfile
