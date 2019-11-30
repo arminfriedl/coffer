@@ -1,3 +1,5 @@
+CURDIR=$(shell pwd)
+
 default:
 	cargo build
 
@@ -6,6 +8,6 @@ release:
 
 publish:
 	docker pull clux/muslrust
-	docker run -v $PWD:/volume --rm -t clux/muslrust cargo build --release
+	docker run -v $(CURDIR):/volume --rm -t clux/muslrust cargo build --release
 
 .PHONY: default release publish
