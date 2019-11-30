@@ -22,3 +22,5 @@
    - [ ] Encrypt key request with client key
    - [ ] Decrypt key request with client key
    - [ ] Generate trampolin sh from dockerfile
+* Docker
+** TODO Create Dockerfile for server
