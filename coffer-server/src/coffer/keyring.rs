@@ -53,9 +53,9 @@ pub struct Keyring {
 }
 
 impl Keyring {
-    pub fn new_from_path(path: &PathBuf, keep: bool) -> Result<Keyring, KeyringError> {
+    pub fn new_from_path(path: &PathBuf) -> Result<Keyring, KeyringError> {
         let keyring = Keyring {
-            master: key_from_path(path, keep)?,
+            master: key_from_path(path)?,
             clients: HashMap::new(),
         };
 
@@ -63,21 +63,19 @@ impl Keyring {
     }
 
     pub fn add_key_from_path(&mut self, path: &PathBuf, keep: bool) -> Result<(), KeyringError> {
-        let client_key: ClientKey = key_from_path(path, keep)?;
+        let client_key: ClientKey = key_from_path(path)?;
         self.clients.insert(client_key.id.clone(), client_key);
 
         Ok(())
     }
 }
 
-fn key_from_path<T>(path: &PathBuf, keep: bool) -> Result<T, KeyringError>
+fn key_from_path<T>(path: &PathBuf) -> Result<T, KeyringError>
 where T: serde::de::DeserializeOwned
 {
 
     let mk_file = File::open(path)?;
     let key = serde_cbor::from_reader(mk_file)?;
-
-    if !keep { std::fs::remove_file(path)? };
 
     Ok(key)
 }

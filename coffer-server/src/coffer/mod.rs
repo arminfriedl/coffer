@@ -44,7 +44,7 @@ impl Coffer {
     /// public key
     pub fn new_from_path_encrypted(masterkey: &PathBuf, secrets: &PathBuf, keep: bool) -> Result<Coffer> {
         debug!{"Initializing keyring"}
-        let keyring = Keyring::new_from_path(masterkey, keep)?;
+        let keyring = Keyring::new_from_path(masterkey)?;
 
         debug!{"Loading secrets"}
         let mut sec_data = Vec::new();
