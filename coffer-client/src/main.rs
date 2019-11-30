@@ -6,8 +6,7 @@ use structopt::StructOpt;
 use std::fs::File;
 use std::error::Error;
 use std::net::TcpStream;
-use std::net::SocketAddr;
-use std::net::IpAddr;
+use std::net::ToSocketAddrs;
 use std::path::PathBuf;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -20,8 +19,8 @@ struct Args {
     port: u16,
 
     /// The address secsrv binds to
-    #[structopt(short, long, env = "SECSRV_IP", default_value = "127.0.0.1")]
-    ip: IpAddr,
+    #[structopt(short, long, env = "SECSRV_HOST", default_value = "127.0.0.1")]
+    host: String,
 
     /// Path to the keys file
     #[structopt(parse(from_os_str), env = "SECSRV_SECRETS", hide_env_values = true)]
@@ -39,8 +38,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::from_args();
 
     info!{"Connecting to coffer server"}
-    let addr = SocketAddr::from((args.ip, args.port));
-    let stream: TcpStream = TcpStream::connect(addr)?;
+    let mut addr = (&*args.host, args.port).to_socket_addrs()?;
+    let stream: TcpStream = TcpStream::connect(addr.next().unwrap())?;
 
     info!{"Parsing key requests"}
     let keys = parse_from_path(&args.secrets)?;
