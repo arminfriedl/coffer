@@ -36,7 +36,7 @@ struct Args {
     ip: IpAddr,
 
     /// Prevent deletion of key files
-    #[structopt(short)]
+    #[structopt(long)]
     keep_keys: bool
 }
 

@@ -4,6 +4,7 @@
 ** TODO Add tests
 ** TODO Readme
 * Coffer Server
+** TODO Double delete if files not kept
 ** TODO Add secrets on-the-fly
 ** TODO Store secrets in secure memory
    - Not persisted
@@ -13,6 +14,7 @@
 ** DONE Set environment variables
    CLOSED: [2019-11-27 Wed 22:51]
 ** TODO Send key requests encrypted/signed
+** TODO Secure Communication
 * Coffer Companion
 ** TODO Add Subcommands
    - [X] Generate master key

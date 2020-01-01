@@ -20,7 +20,7 @@ quick_error! {
         Cbor(err: serde_cbor::Error) {
             from()
         }
-        Crypto {}
+        Crypto
     }
 }
 
