@@ -2,7 +2,8 @@
 members = [
         "coffer-server",
         "coffer-client",
-        "coffer-companion"
+        "coffer-companion",
+        "coffer-common"
 ]
 
 [profile.release]

@@ -1,0 +1,20 @@
+[package]
+name = "coffer-common"
+version = "0.1.0"
+authors = ["armin"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Base tools
+log = "^0.4"
+env_logger = "^0.7"
+serde = { version = "^1.0", features = ["derive"]}
+serde_cbor = "^0.10"
+quick-error = "^1.2"
+# Key management/Cryptography
+sodiumoxide = "^0.2"
+seckey = "^0.9"
+# Memory management
+bumpalo = { version = "^3.1", features = ["collections"]}

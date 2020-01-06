@@ -4,61 +4,50 @@ use log::{debug, error, info, trace, warn};
 use env_logger;
 
 use std::convert::TryInto;
-use futures::executor::ThreadPool;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use std::net::IpAddr;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use tokio::prelude::*;
+
 mod coffer;
+mod server;
 mod comm;
 
 use comm::Channel;
 
 #[derive(StructOpt, Debug)]
 struct Args {
-    /// Path to the master key file. Will be deleted after processing.
-    #[structopt(short, long, parse(from_os_str), env = "SECSRV_MASTER", hide_env_values = true)]
-    master: PathBuf,
+    /// Path to the server certificate. Will be deleted after processing.
+    #[structopt(short, long, parse(from_os_str), env = "COFFER_SERVER_CERTIFICATE", hide_env_values = true)]
+    certificate: Option<PathBuf>,
 
-    /// Path to the secret keys file. Will be deleted after processing.
-    /// Must be encrypted with the public key of the master key
-    #[structopt(short, long, parse(from_os_str), env = "SECSRV_KEYS", hide_env_values = true)]
-    secrets: PathBuf,
+    /// Path to an initial secrets file. Will be deleted after processing.
+    /// Must be sealed by the public key of the server certificate
+    #[structopt(short, long, parse(from_os_str), env = "COFFER_SERVER_SECRETS", hide_env_values = true)]
+    secrets: Option<PathBuf>,
 
-    /// The port secsrv listens on
-    #[structopt(short, long, env = "SECSRV_PORT", default_value = "9187")]
+    /// Port the coffer server listens on
+    #[structopt(short, long, env = "COFFER_SERVER_PORT", default_value = "9187")]
     port: u16,
 
-    /// The address secsrv binds to
-    #[structopt(short, long, env = "SECSRV_IP", default_value = "127.0.0.1")]
-    ip: IpAddr,
-
-    /// Prevent deletion of key files
-    #[structopt(long)]
-    keep_keys: bool
+    /// Address coffer server should bind to
+    #[structopt(short, long, parse(try_from_str), env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
+    ip: SocketAddr,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::init();
     let args = Args::from_args();
 
     _print_banner();
 
-    info!{"Setting up executor"}
-    let address: SocketAddr = (args.ip, args.port).try_into()
-        .expect("Parsing binding address failed");
-    let executor = ThreadPool::new()
-        .expect("Setting up executor failed");
-
     info!{"Filling coffer"}
-    let coffer = coffer::Coffer::new_from_path_encrypted(&args.master, &args.secrets, args.keep_keys)
+    let coffer = coffer::Coffer::new_from_path_encrypted(&args.master, &args.secrets)
         .expect("Could not fill coffer");
-
-    debug!{"Connecting on {}", address}
-    let channel = Channel {executor, address, coffer: Arc::from(coffer)};
-    channel.listen();
 }
 
 fn _print_banner() {

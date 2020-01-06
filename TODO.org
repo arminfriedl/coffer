@@ -1,3 +1,5 @@
+#+TODO: TODO NEXT DONE
+
 * General
 ** TODO Add a license
 ** TODO Better communication protocol

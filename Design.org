@@ -1,0 +1,43 @@
+* Communication
+** Frame 
+   Header ::: content-length: u64 | message-type: u8 ::: 72 bit, fixed
+   Body   ::: content: [u8; content-length]          ::: conent-length byte, variable
+
+   Numbers are in network byte order.
+
+** Message Types
+   
+   | Ordinal | Type  | Body Format     | Direction | Transitions      | Description                                  |
+   |---------+-------+-----------------+-----------+------------------+----------------------------------------------|
+   |       0 | Hello | Public Key      | C -> S    | Waiting for Link | Initiates communication                      |
+   |       1 | Link  | <empty>         | S -> C    | Put, Get         | Link established, communication can start    |
+   |       2 | Put   | Coffer (sealed) | C -> S    | OkPut            | Merge a ~Coffer~ for the client              |
+   |       3 | Get   | Coffer (sealed) | C -> S    | OkGet            | Retrieve a ~Coffer~ for the client           |
+   |       4 | OkPut | <empty>         | S -> C    | Put, Get         | ~Coffer~ was successfully merged             |
+   |       5 | OkGet | Coffer (sealed) | S -> C    | Put, Get         | Return a sealed ~Coffer~ for a ~Get~ request |
+   |     128 | Error |                 | S -> C    |                  | Generic server error                         |
+
+   - Error can be returned at any stage
+   - Communication can end at any stage. Communication ends when connection is closed by either side.
+   - Seal is determined by communication direction:
+     C -> S: sealed by server public key, client private key
+     S -> C: sealed by client public key, server private key
+
+* Coffer
+  - Multitree with each leave terminating in a Vec<u8>
+  - Nodes (except leaves = key path) are utf8 strings
+  - A ~Put~ request must contain a fully determined ~Coffer~ (all leaves are values)
+  - A ~Get~ request contains a partially determined ~Coffer~ (values are ignored)
+    - If a node resolves to a parent, the subtree (which is also a ~Coffer~) is returned
+    - If a node resolves to a leave, the partial ~Coffer~ terminating in the leave and its value are returned
+* Coffer Server
+  A ~coffer-server~ can support multiple clients by means of /sharding/ the
+  keyspace. Clients are uniquely identified by their public key.
+  
+  - A client can only access its /shard/ identified by its public key
+  - All server responses are sealed by the client's public key and server's
+    private key. No secrets can be extracted or communication data collected
+    except the private keys are compromised.
+  - All server requests are sealed by the server's public and client's private
+    key. No tampered requests can be sent or communication data collected except
+    the private keys are compromised.
