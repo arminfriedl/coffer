@@ -3,20 +3,18 @@ use log::{debug, error, info, trace, warn};
 
 use env_logger;
 
-use std::convert::TryInto;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use std::net::IpAddr;
 use std::net::SocketAddr;
-use std::sync::Arc;
 
-use tokio::prelude::*;
+use coffer_common::certificate::Certificate;
+use coffer_common::keyring::Keyring;
 
-mod coffer;
 mod server;
-mod comm;
+mod coffer_map;
 
-use comm::Channel;
+use server::ServerBuilder;
+use coffer_map::CofferMap;
 
 #[derive(StructOpt, Debug)]
 struct Args {
@@ -29,13 +27,9 @@ struct Args {
     #[structopt(short, long, parse(from_os_str), env = "COFFER_SERVER_SECRETS", hide_env_values = true)]
     secrets: Option<PathBuf>,
 
-    /// Port the coffer server listens on
-    #[structopt(short, long, env = "COFFER_SERVER_PORT", default_value = "9187")]
-    port: u16,
-
-    /// Address coffer server should bind to
+    /// Address the coffer server should bind to
     #[structopt(short, long, parse(try_from_str), env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
-    ip: SocketAddr,
+    address: SocketAddr,
 }
 
 #[tokio::main]
@@ -45,9 +39,13 @@ async fn main() {
 
     _print_banner();
 
-    info!{"Filling coffer"}
-    let coffer = coffer::Coffer::new_from_path_encrypted(&args.master, &args.secrets)
-        .expect("Could not fill coffer");
+    let server = ServerBuilder::new()
+        .with_keyring(args.certificate.and_then(|cert_path| Some(Keyring::new(Certificate::from(cert_path)))))
+        .with_coffer(Some(CofferMap::new()))
+        .build()
+        .expect("Couldn't build server");
+
+    server.run(args.address).await;
 }
 
 fn _print_banner() {

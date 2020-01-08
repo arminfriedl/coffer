@@ -40,6 +40,9 @@ pub struct Certificate {
     inner: SecKey<CertificateInner>
 }
 
+unsafe impl Send for Certificate {}
+unsafe impl Sync for Certificate {}
+
 #[derive(Serialize, Deserialize)]
 struct CertificateInner {
     public_key: box_::PublicKey,
@@ -73,20 +76,18 @@ impl Certificate {
         Ok(Certificate{inner})
     }
 
+    pub fn to_cbor(&self) -> Result<Vec<u8>, CertificateError> {
+        let inner_cert = &*self.inner.read();
+        let cbor = serde_cbor::to_vec(inner_cert)?;
+        Ok(cbor)
+    }
+
     pub fn open(&self, c: &[u8]) -> Result<Vec<u8>, CertificateError> {
         let pk = &self.inner.read().public_key;
         let sk = &self.inner.read().private_key;
 
-        debug!{"Opening sealed box"};
         sealedbox::open(c, pk, sk)
             .map_err(|_| CertificateError::Crypto)
-    }
-
-    fn seal(&self, m: &[u8]) -> Vec<u8> {
-        let pk = &self.inner.read().public_key;
-
-        debug!{"Sealing box"}
-        sealedbox::seal(m, pk)
     }
 }
 

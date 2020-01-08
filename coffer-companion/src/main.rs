@@ -25,6 +25,6 @@ fn main() {
 
     match args {
         Args::Generate {out} => generate::generate_key(out),
-        Args::Encrypt {yaml, out, masterkey} => encrypt::generate_encrypted_secrets(yaml, out, masterkey)
+        Args::Encrypt {yaml, out, masterkey} => {}
     }
 }

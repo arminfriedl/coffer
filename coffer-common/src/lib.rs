@@ -5,6 +5,7 @@ use log::{debug, error, info, trace, warn};
 
 pub mod certificate;
 pub mod coffer;
+pub mod keyring;
 
 #[cfg(test)]
 mod tests {

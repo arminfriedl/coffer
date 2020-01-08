@@ -10,10 +10,12 @@ log = "^0.4"
 env_logger = "^0.7"
 structopt = "^0.3"
 quick-error = "^1.2"
+lazy_static = "^1.4"
+
 # Key management/Cryptography 
 sodiumoxide = "^0.2"
 # Communication
-tokio = { version="^0.2", features = ["full"]}
+tokio = { version="^0.2.8", features = ["full"]}
 serde = { version = "^1.0", features = ["derive"]}
 serde_cbor = "^0.10.2"
 futures = { version = "0.3.1", features = ["thread-pool"]}
