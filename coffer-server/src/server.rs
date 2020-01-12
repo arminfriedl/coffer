@@ -3,7 +3,7 @@ use log::{debug, error, info, trace, warn};
 
 use quick_error::quick_error;
 
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::{TcpListener};
 use tokio::stream::StreamExt;
 use tokio::sync::RwLock;
 
@@ -13,6 +13,8 @@ use std::sync::Arc;
 use coffer_common::keyring::Keyring;
 use coffer_common::coffer::Coffer;
 use coffer_common::certificate::{Certificate, CertificateError};
+
+use crate::protocol::Protocol;
 
 quick_error! {
     #[derive(Debug)]
@@ -61,13 +63,17 @@ where C: Coffer + Send + Sync + 'static
             while let Some(connection) = incoming.next().await {
                 debug!{"New incoming connection"}
                 match connection {
-                    Ok(mut tcp_stream) => {
-                        debug!{"Connection ok"}
-                        debug!{"Spawning off connection handler"}
+                    Ok(tcp_stream) => {
+                        debug!{"Connection ok\nSpawning off connection handler"}
 
                         let keyring = self.keyring.clone();
                         let coffer = self.coffer.clone();
-                        tokio::spawn(Self::handle_connection(keyring, coffer, tcp_stream));
+
+                        let protocol = Protocol::new(tcp_stream, coffer, keyring);
+                        tokio::spawn(async move {
+                            protocol.run().await;
+                        });
+
                     }
                     Err(err) => error!{"Connection could not be established {}", err}
                 }
@@ -76,13 +82,6 @@ where C: Coffer + Send + Sync + 'static
         };
 
         server.await
-    }
-
-    async fn handle_connection(keyring: Arc<RwLock<Keyring>>,
-                               coffer: Arc<RwLock<C>>,
-                               mut tcp_stream: TcpStream)
-    {
-        let (reader, mut writer) = tcp_stream.split();
     }
 }
 

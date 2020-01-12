@@ -12,6 +12,7 @@ use coffer_common::keyring::Keyring;
 
 mod server;
 mod coffer_map;
+mod protocol;
 
 use server::ServerBuilder;
 use coffer_map::CofferMap;

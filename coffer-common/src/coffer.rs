@@ -33,7 +33,7 @@ pub enum CofferValue {
 
 /// A path to a value
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
-pub struct CofferPath(Vec<String>);
+pub struct CofferPath(pub Vec<String>);
 
 /// Interface for interacting with a `Coffer`
 pub trait Coffer {

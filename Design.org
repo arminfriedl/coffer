@@ -15,7 +15,8 @@
    |       3 | Get   | Coffer (sealed) | C -> S    | OkGet            | Retrieve a ~Coffer~ for the client           |
    |       4 | OkPut | <empty>         | S -> C    | Put, Get         | ~Coffer~ was successfully merged             |
    |       5 | OkGet | Coffer (sealed) | S -> C    | Put, Get         | Return a sealed ~Coffer~ for a ~Get~ request |
-   |     128 | Error |                 | S -> C    |                  | Generic server error                         |
+   |      63 | Bye   |                 | C -> S    |                  | Close connection                             |
+   |     127 | Error |                 | S -> C    |                  | Generic server error                         |
 
    - Error can be returned at any stage
    - Communication can end at any stage. Communication ends when connection is closed by either side.
