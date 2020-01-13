@@ -3,6 +3,8 @@
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
+use serde::{Serialize, Deserialize};
+
 use quick_error::quick_error;
 
 quick_error! {
@@ -21,7 +23,7 @@ quick_error! {
 pub type CofferResult<T> = Result<T, CofferError>;
 
 /// Values supported by a `Coffer`
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum CofferValue {
     /// A UTF-8 encoded string
     String(String),
@@ -32,7 +34,7 @@ pub enum CofferValue {
 }
 
 /// A path to a value
-#[derive(Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct CofferPath(pub Vec<String>);
 
 /// Interface for interacting with a `Coffer`

@@ -6,11 +6,11 @@ use std::convert::TryInto;
 use std::convert::TryFrom;
 use std::net::Shutdown;
 
-use bytes::BytesMut;
-
 use tokio::prelude::*;
 use tokio::net::TcpStream;
 use tokio::sync::RwLock;
+
+use serde_cbor;
 
 use quick_error::quick_error;
 
@@ -42,15 +42,11 @@ enum State {
 
 #[derive(Debug)]
 enum Request {
-    Hello,
+    Hello(Vec<u8>),
     Put(Vec<u8>),
     Get(Vec<u8>),
     Bye,
     Error
-}
-
-enum Response {
-    OkGet(Vec<u8>)
 }
 
 pub struct Protocol<C>
@@ -59,6 +55,7 @@ where C: Coffer
     stream: TcpStream,
     coffer: Arc<RwLock<C>>,
     keyring: Arc<RwLock<Keyring>>,
+    client: Option<Vec<u8>>,
     state: State
 }
 
@@ -73,7 +70,8 @@ where C: Coffer
     {
 
         let state = State::Start;
-        Protocol {stream, coffer, keyring, state}
+        let client = None;
+        Protocol {stream, coffer, keyring, client, state}
     }
 
     pub async fn run(mut self) {
@@ -102,9 +100,9 @@ where C: Coffer
             .unwrap();
 
         match msg_type {
-            0x00 => Request::Hello,
-            0x02 => Request::Put((*message).into()),
-            0x03 => Request::Get((*message).into()),
+            0x00 => Request::Hello(message),
+            0x02 => Request::Put(message),
+            0x03 => Request::Get(message),
             0x63 => Request::Bye,
             0xff => Request::Error,
                _ => Request::Error
@@ -167,44 +165,69 @@ where C: Coffer
 
     async fn transit(&mut self, event: Request) {
         match (&self.state, event) {
-            (State::Start, Request::Hello) => self.state = State::Link,
-            (State::Link, Request::Get(_)) => {
-                debug!{"Writing response"}
-                let get_res = self.coffer.read().await
-                    .get(CofferPath(vec!["a".into(), "b".into(), "c".into()]))
+            (State::Start, Request::Hello(pk)) => {
+                debug!{"Reading public key"}
+                self.keyring.write().await
+                    .add_known_key(&pk)
                     .unwrap();
-
-                if let CofferValue::Blob(b) = get_res {
-                    let response = Response::OkGet(b);
-                    Self::write_response(response, &mut self.stream).await;
-                    self.state = State::Link;
-                }
-            }
-            (State::Link, Request::Put(p)) => {
-                self.coffer.write().await
-                    .put(CofferPath(vec!["a".into(), "b".into(), "c".into()]),
-                         CofferValue::Blob(p));
+                self.client = Some(pk);
                 self.state = State::Link;
             }
+
+            (State::Link, Request::Get(req)) => {
+                debug!{"Writing response"}
+                let req = serde_cbor::from_slice(
+                    &self.keyring.read().await
+                        .open(&req)
+                        .unwrap()
+                ).unwrap();
+
+                let res = self.coffer.read().await
+                    .get(req)
+                    .unwrap();
+
+                let response = self.keyring.read().await
+                    .seal(
+                        &self.client.as_ref().unwrap(),
+                        &serde_cbor::to_vec(&res).unwrap()
+                    ).unwrap();
+
+                // TODO magic number
+                let frame = Self::framed(0x05u8, response).await;
+                trace!{"OkGet Frame: {:?}", frame}
+                // TODO Proper result handling
+                self.stream.write_all(&frame).await.unwrap();
+
+                self.state = State::Link;
+            }
+
+            (State::Link, Request::Put(put)) => {
+                debug!{"Putting secrets"}
+                let put: Vec<(CofferPath, CofferValue)> =
+                    serde_cbor::from_slice(
+                        &self.keyring.read().await
+                            .open(&put)
+                            .unwrap()
+                    ).unwrap();
+
+                for (coffer_path, coffer_value) in put {
+                    self.coffer.write().await
+                        .put(coffer_path, coffer_value)
+                        .unwrap();
+                }
+
+                self.state = State::Link;
+            }
+
             (_, Request::Bye) => self.state = State::End,
+
             (_, Request::Error) => self.state = State::End,
+
             _ => self.state = State::End
         }
     }
 
-    async fn write_response<T>(response: Response, writer: &mut T)
-    where T: AsyncWrite + Unpin
-    {
-        match response {
-            Response::OkGet(get) => {
-                let frame = Self::make_frame(0x05u8, get).await;
-                trace!{"OkGet Frame: {:?}", frame}
-                writer.write_all(&frame).await.unwrap();
-            }
-        }
-    }
-
-    async fn make_frame(msg_type: u8, data: Vec<u8>) -> Vec<u8> {
+    async fn framed(msg_type: u8, data: Vec<u8>) -> Vec<u8> {
         trace!{"Creating frame for type: {:?}, data: {:?}", msg_type, data}
 
         // TODO magic number
