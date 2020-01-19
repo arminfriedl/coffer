@@ -12,6 +12,6 @@ pub fn generate_key(out: PathBuf) {
     let mut writer = File::create(&out)
         .expect(&format!{"Could not create out file {}", &out.display()});
 
-    writer.write_all(&cert);
+    writer.write_all(&cert).unwrap();
 
 }

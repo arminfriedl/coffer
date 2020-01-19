@@ -76,6 +76,7 @@ impl Certificate {
         Ok(Certificate{inner})
     }
 
+    #[cfg(feature = "export")]
     pub fn to_cbor(&self) -> Result<Vec<u8>, CertificateError> {
         let inner_cert = &*self.inner.read();
         let cbor = serde_cbor::to_vec(inner_cert)?;

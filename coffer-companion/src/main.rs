@@ -6,7 +6,7 @@ mod encrypt;
 
 #[derive(StructOpt, Debug)]
 enum Args {
-    Generate {
+    Certificate {
         #[structopt(short, long, parse(from_os_str))]
         out: PathBuf
     },
@@ -16,7 +16,7 @@ enum Args {
         #[structopt(short, long, parse(from_os_str))]
         out: PathBuf,
         #[structopt(short, long, parse(from_os_str))]
-        masterkey: PathBuf,
+        certificate: PathBuf,
     }
 }
 
@@ -24,7 +24,7 @@ fn main() {
     let args: Args = Args::from_args();
 
     match args {
-        Args::Generate {out} => generate::generate_key(out),
-        Args::Encrypt {yaml, out, masterkey} => {}
+        Args::Certificate {out} => generate::generate_key(out),
+        Args::Encrypt {yaml, out, certificate} => {}
     }
 }

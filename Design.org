@@ -42,3 +42,27 @@
   - All server requests are sealed by the server's public and client's private
     key. No tampered requests can be sent or communication data collected except
     the private keys are compromised.
+
+* Coffer YAML
+** Secrets Definition  
+   Encrypted with: SK of coffer-companion, PK of coffer-server
+
+   #+BEGIN_SRC yaml
+     # Names for ids (public keys) of clients
+     [clients]
+     file = "AAAA-AAAA-AAAA-AAAA"
+     bin = "FFFF-FFFF-FFFF-FFFF"
+
+     # Secrets for a named client (defined in clients)
+     [file]
+     secretkey = "secret value"
+     secretkey2 = "secret value2"
+   #+END_SRC
+
+** Secret Response
+   file client executes GET to server
+
+   #+BEGIN_SRC yaml
+     secretkey = "secret value"
+     secretkey2 = "secret value2"
+   #+END_SRC

@@ -12,7 +12,7 @@ quick_error! {
     pub enum CofferError {
         Msg(err: &'static str) {
             from(err)
-                display("{}", err)
+            display("{}", err)
         }
         Other(err: Box<dyn std::error::Error>) {
             cause(&**err)
@@ -42,7 +42,7 @@ pub trait Coffer {
     /// Put `value` at `path`. Errors if there is already a value at `path`.
     fn put(&mut self, path: CofferPath, value: CofferValue) -> CofferResult<()>;
 
-    /// Push `value` to `path`. Replaces existing values silently.
+    /// Push `value` to `path`. Replaces existing values.
     fn push(&mut self, path: CofferPath, value: CofferValue);
 
     /// Retrieve `value` at path. Errors if there is no `value` at path.

@@ -1,12 +1,13 @@
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
+use std::net::SocketAddr;
+
 use env_logger;
 use structopt::StructOpt;
 use std::fs::File;
 use std::error::Error;
 use std::net::TcpStream;
-use std::net::ToSocketAddrs;
 use std::path::PathBuf;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -14,16 +15,12 @@ use std::io::Write;
 
 #[derive(StructOpt, Debug)]
 struct Args {
-    /// The port secsrv is listening on
-    #[structopt(short, long, env = "SECSRV_PORT", default_value = "9187")]
-    port: u16,
+    /// Address of the coffer server
+    #[structopt(short, long, parse(try_from_str), env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
+    server_address: SocketAddr,
 
-    /// The address secsrv binds to
-    #[structopt(short, long, env = "SECSRV_HOST", default_value = "127.0.0.1")]
-    host: String,
-
-    /// Path to the keys file
-    #[structopt(parse(from_os_str), env = "SECSRV_SECRETS", hide_env_values = true)]
+    /// Path to the request file sent to the server
+    #[structopt(parse(from_os_str), env = "COFFER_REQUEST", hide_env_values = true)]
     secrets: PathBuf,
 
     /// The subcommand spawned by coffer-client
@@ -38,8 +35,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::from_args();
 
     info!{"Connecting to coffer server"}
-    let mut addr = (&*args.host, args.port).to_socket_addrs()?;
-    let stream: TcpStream = TcpStream::connect(addr.next().unwrap())?;
+    let stream: TcpStream = TcpStream::connect(args.server_address)?;
 
     info!{"Parsing key requests"}
     let keys = parse_from_path(&args.secrets)?;

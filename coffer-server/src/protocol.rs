@@ -2,11 +2,12 @@
 use log::{debug, error, info, trace, warn};
 
 use std::sync::Arc;
-use std::convert::TryInto;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::net::Shutdown;
 
-use tokio::prelude::*;
+use tokio::io::{AsyncRead,
+                AsyncReadExt,
+                AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::RwLock;
 
@@ -14,10 +15,11 @@ use serde_cbor;
 
 use quick_error::quick_error;
 
-use coffer_common::coffer::Coffer;
-use coffer_common::coffer::CofferValue;
-use coffer_common::coffer::CofferPath;
+use coffer_common::coffer::{CofferValue,
+                            CofferPath,
+                            Coffer};
 use coffer_common::keyring::Keyring;
+use hex;
 
 quick_error! {
     #[derive(Debug)]
@@ -68,13 +70,13 @@ where C: Coffer
         keyring: Arc<RwLock<Keyring>>
     ) -> Protocol<C>
     {
-
         let state = State::Start;
         let client = None;
         Protocol {stream, coffer, keyring, client, state}
     }
 
-    pub async fn run(mut self) {
+    pub async fn run(mut self)
+    {
         while self.state != State::End
         {
             debug!{"In state: {:?}", self.state}
@@ -85,7 +87,8 @@ where C: Coffer
         self.stream.shutdown(Shutdown::Both).unwrap();
     }
 
-    async fn event(&mut self) -> Request {
+    async fn event(&mut self) -> Request
+    {
         let (mut reader, _writer) = self.stream.split();
 
         // TODO restrict msg_size more, otherwise bad client could bring server
@@ -163,7 +166,8 @@ where C: Coffer
         Some(message)
     }
 
-    async fn transit(&mut self, event: Request) {
+    async fn transit(&mut self, event: Request)
+    {
         match (&self.state, event) {
             (State::Start, Request::Hello(pk)) => {
                 debug!{"Reading public key"}
@@ -176,11 +180,14 @@ where C: Coffer
 
             (State::Link, Request::Get(req)) => {
                 debug!{"Writing response"}
-                let req = serde_cbor::from_slice(
-                    &self.keyring.read().await
-                        .open(&req)
-                        .unwrap()
-                ).unwrap();
+                let mut req: CofferPath =
+                    serde_cbor::from_slice(
+                        &self.keyring.read().await
+                            .open(&req)
+                            .unwrap()
+                    ).unwrap();
+
+                req.0.insert(0, hex::encode(self.client.as_ref().unwrap()));
 
                 let res = self.coffer.read().await
                     .get(req)
@@ -203,12 +210,17 @@ where C: Coffer
 
             (State::Link, Request::Put(put)) => {
                 debug!{"Putting secrets"}
-                let put: Vec<(CofferPath, CofferValue)> =
+                let mut put: Vec<(CofferPath, CofferValue)> =
                     serde_cbor::from_slice(
                         &self.keyring.read().await
                             .open(&put)
                             .unwrap()
                     ).unwrap();
+
+                let key_string = hex::encode(self.client.as_ref().unwrap());
+
+                put.iter_mut().map( |(cp, _cv)| &mut cp.0)
+                    .for_each(|cp| cp.insert(0, key_string.clone()));
 
                 for (coffer_path, coffer_value) in put {
                     self.coffer.write().await
@@ -227,7 +239,8 @@ where C: Coffer
         }
     }
 
-    async fn framed(msg_type: u8, data: Vec<u8>) -> Vec<u8> {
+    async fn framed(msg_type: u8, data: Vec<u8>) -> Vec<u8>
+    {
         trace!{"Creating frame for type: {:?}, data: {:?}", msg_type, data}
 
         // TODO magic number

@@ -23,12 +23,12 @@ struct Args {
     #[structopt(short, long, parse(from_os_str), env = "COFFER_SERVER_CERTIFICATE", hide_env_values = true)]
     certificate: Option<PathBuf>,
 
-    /// Path to an initial secrets file. Will be deleted after processing.
+    /// Path to secrets file. Will be deleted after processing.
     /// Must be sealed by the public key of the server certificate
     #[structopt(short, long, parse(from_os_str), env = "COFFER_SERVER_SECRETS", hide_env_values = true)]
     secrets: Option<PathBuf>,
 
-    /// Address the coffer server should bind to
+    /// Address, the coffer server should bind to
     #[structopt(short, long, parse(try_from_str), env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
     address: SocketAddr,
 }
