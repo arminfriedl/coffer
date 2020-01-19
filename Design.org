@@ -1,36 +1,32 @@
 * Communication
 ** Frame 
-   Header ::: content-length: u64 | message-type: u8 ::: 72 bit, fixed
+   Header ::: content-length: u16 | message-type: u8 ::: 3 byte, fixed
    Body   ::: content: [u8; content-length]          ::: conent-length byte, variable
 
-   Numbers are in network byte order.
+   Unsigned integers in network byte order.
 
 ** Message Types
    
-   | Ordinal | Type  | Body Format     | Direction | Transitions      | Description                                  |
-   |---------+-------+-----------------+-----------+------------------+----------------------------------------------|
-   |       0 | Hello | Public Key      | C -> S    | Waiting for Link | Initiates communication                      |
-   |       1 | Link  | <empty>         | S -> C    | Put, Get         | Link established, communication can start    |
-   |       2 | Put   | Coffer (sealed) | C -> S    | OkPut            | Merge a ~Coffer~ for the client              |
-   |       3 | Get   | Coffer (sealed) | C -> S    | OkGet            | Retrieve a ~Coffer~ for the client           |
-   |       4 | OkPut | <empty>         | S -> C    | Put, Get         | ~Coffer~ was successfully merged             |
-   |       5 | OkGet | Coffer (sealed) | S -> C    | Put, Get         | Return a sealed ~Coffer~ for a ~Get~ request |
-   |      63 | Bye   |                 | C -> S    |                  | Close connection                             |
-   |     127 | Error |                 | S -> C    |                  | Generic server error                         |
+   | Ordinal | Type        | Body Format     | Direction | Transitions              | Description                               |
+   |---------+-------------+-----------------+-----------+--------------------------+-------------------------------------------|
+   |    0x00 | Hello       | Client PK       | C -> S    | Link, KeyNotFound, Error | Initiates communication                   |
+   |    0x01 | Link        | <empty>         | S -> C    | Get, Bye                 | Link established, communication can start |
+   |    0x02 | Get         | <empt>          | C -> S    | OkGet, Error             | Retrieve a secrets for the client         |
+   |    0x03 | OkGet       | Coffer (sealed) | S -> C    | Bye                      | Send secrets to the client                |
+   |    0x99 | Bye         | Client PK       | C -> S    | •                        | Close connection                          |
+   |    0xaa | KeyNotFound | Client PK       | S -> C    | •                        | PK unknown to server                      |
+   |    0xff | Error       | UTF-8 String    | S -> C    | •                        | Generic server error with reason          |
 
-   - Error can be returned at any stage
-   - Communication can end at any stage. Communication ends when connection is closed by either side.
    - Seal is determined by communication direction:
      C -> S: sealed by server public key, client private key
      S -> C: sealed by client public key, server private key
+   - Secrets returned as sealed cbor
 
 * Coffer
-  - Multitree with each leave terminating in a Vec<u8>
-  - Nodes (except leaves = key path) are utf8 strings
-  - A ~Put~ request must contain a fully determined ~Coffer~ (all leaves are values)
-  - A ~Get~ request contains a partially determined ~Coffer~ (values are ignored)
-    - If a node resolves to a parent, the subtree (which is also a ~Coffer~) is returned
-    - If a node resolves to a leave, the partial ~Coffer~ terminating in the leave and its value are returned
+  - Sharded KV-Store
+  - Keys are UTF-8 Strings
+  - Typed values as defined by TOML: String, Integer, Float, Boolean, Date
+
 * Coffer Server
   A ~coffer-server~ can support multiple clients by means of /sharding/ the
   keyspace. Clients are uniquely identified by their public key.
@@ -43,26 +39,30 @@
     key. No tampered requests can be sent or communication data collected except
     the private keys are compromised.
 
-* Coffer YAML
-** Secrets Definition  
-   Encrypted with: SK of coffer-companion, PK of coffer-server
+* Coffer Definition (TOML)
+  Encrypted Authentication: SK of coffer-companion, PK of coffer-server
 
-   #+BEGIN_SRC yaml
-     # Names for ids (public keys) of clients
-     [clients]
-     file = "AAAA-AAAA-AAAA-AAAA"
-     bin = "FFFF-FFFF-FFFF-FFFF"
+  #+BEGIN_SRC yaml
+    # Names for ids (public keys) of clients
+    [clients]
+    file = "AAAA-AAAA-AAAA-AAAA"
+    bin = "FFFF-FFFF-FFFF-FFFF"
 
-     # Secrets for a named client (defined in clients)
-     [file]
-     secretkey = "secret value"
-     secretkey2 = "secret value2"
-   #+END_SRC
+    # Secrets for a named client (defined in clients)
+    [file]
+    secretkey = "secret value"
+    secretkey2 = "secret value2"
+  #+END_SRC
 
-** Secret Response
-   file client executes GET to server
+* Coffer Response
+  Encrypted Authentication: SK of coffer-server, PK of coffer-client
+  Format: cbor
+  
+  CofferResponse = List<CofferSecret>
+  
+  CofferSecret {
+    key: UTF-8 String,
+    value: CofferValue
+  }
 
-   #+BEGIN_SRC yaml
-     secretkey = "secret value"
-     secretkey2 = "secret value2"
-   #+END_SRC
+  CofferValue = String | Integer | Float | Boolean | Date
