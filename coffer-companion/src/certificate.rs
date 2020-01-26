@@ -13,5 +13,10 @@ pub fn generate_key(out: PathBuf) {
         .expect(&format!{"Could not create out file {}", &out.display()});
 
     writer.write_all(&cert).unwrap();
+}
 
+pub fn info(out: PathBuf) {
+    let cert = Certificate::new_from_cbor(out).unwrap();
+    println!{"Public Key: {}", hex::encode_upper(cert.public_key())}
+    println!{"Secret Key: {}", hex::encode_upper(cert.secret_key())}
 }

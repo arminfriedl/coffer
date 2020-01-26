@@ -1,47 +1,89 @@
-//! A simple, thread-safe coffer implementation backed by a hash map
+//! Thread-safe coffer implementation backed by hash map
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 use std::sync::RwLock;
+use std::sync::RwLockReadGuard;
+use std::sync::RwLockWriteGuard;
+
 use std::collections::HashMap;
 
 use coffer_common::coffer::*;
 
-pub struct CofferMap {
-    coffer: RwLock<HashMap<CofferPath, CofferValue>>
-}
+type ShardedCoffer = HashMap<String, HashMap<String, CofferValue>>;
+pub struct CofferMap(RwLock<ShardedCoffer>);
 
 impl CofferMap {
     pub fn new() -> CofferMap {
-        CofferMap {
-            coffer: RwLock::new(HashMap::new())
-        }
+        CofferMap(RwLock::new(HashMap::new()))
+    }
+
+    fn read(&self) -> RwLockReadGuard<'_, ShardedCoffer> {
+        self.0.read().unwrap()
+    }
+
+    fn write(&self) -> RwLockWriteGuard<'_, ShardedCoffer> {
+        self.0.write().unwrap()
     }
 }
 
 impl Coffer for CofferMap {
-    fn put(&mut self, path: CofferPath, value: CofferValue) -> CofferResult<()> {
-        let mut lock = self.coffer.write().unwrap();
+    fn put(&mut self, key: CofferKey, value: CofferValue) -> CofferResult<()> {
+        let mut lock = self.write();
 
-        match (*lock).contains_key(&path) {
-            true => Err(CofferError::Msg("test")),
-            false => {(*lock).insert(path, value); Ok(())}
+        match lock.get_mut(&key.shard) {
+            Some(shard) => {
+                if shard.contains_key(&key.key) { Err(CofferError::Msg("Key exists")) }
+                else { shard.insert(key.key, value); Ok(()) }
+            }
+            None => {
+                lock.insert(key.shard.clone(), HashMap::new());
+                lock.get_mut(&key.shard).unwrap().insert(key.key, value);
+                Ok(())
+            }
         }
     }
 
-    fn push(&mut self, path: CofferPath, value: CofferValue) {
-        let mut lock = self.coffer.write().unwrap();
+    fn push(&mut self, key: CofferKey, value: CofferValue) {
+        let mut lock = self.write();
 
-        (*lock).insert(path, value);
+        match lock.get_mut(&key.shard) {
+            Some(shard) => {
+                shard.insert(key.key, value);
+            }
+            None => {
+                lock.insert(key.shard.clone(), HashMap::new());
+                lock.get_mut(&key.shard).unwrap().insert(key.key, value);
+            }
+        }
     }
 
-    fn get(&self, path: CofferPath) -> CofferResult<CofferValue> {
-        let lock = self.coffer.read().unwrap();
+    fn get(&self, key: &CofferKey) -> CofferResult<CofferValue> {
+        let lock = self.read();
 
-        (*lock).get(&path)
-            .and_then(|v| Some(v.clone()))
-            .ok_or(CofferError::Msg("Key not found"))
+        let res = lock.get(&key.shard)
+            .and_then( |shard| { shard.get(&key.key) } )
+            .ok_or(CofferError::Msg("Key not found"))?;
+
+        Ok(res.clone())
+    }
+
+    fn get_shard<T>(&self, shard: T) -> CofferResult<CofferShard>
+    where T: AsRef<str>
+    {
+        let lock = self.read();
+
+        let coffer_shard = lock.get(shard.as_ref())
+            .ok_or(CofferError::Msg("Shard {} not found"))?;
+
+        let mut res = CofferShard(Vec::new());
+
+        for (k,v) in coffer_shard {
+            res.0.push((k.clone(), v.clone()));
+        }
+
+        Ok(res)
     }
 }
 

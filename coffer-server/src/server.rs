@@ -5,14 +5,13 @@ use quick_error::quick_error;
 
 use tokio::net::{TcpListener};
 use tokio::stream::StreamExt;
-use tokio::sync::RwLock;
 
 use std::net::{ToSocketAddrs, SocketAddr};
 use std::sync::Arc;
 
 use coffer_common::keyring::Keyring;
 use coffer_common::coffer::Coffer;
-use coffer_common::certificate::{Certificate, CertificateError};
+use coffer_common::certificate::CertificateError;
 
 use crate::protocol::Protocol;
 
@@ -35,13 +34,19 @@ quick_error! {
 pub struct Server<C>
 where C: Coffer
 {
-    keyring: Arc<RwLock<Keyring>>,
-    coffer: Arc<RwLock<C>>
+    keyring: Arc<Keyring>,
+    coffer: Arc<C>
 }
 
-impl <C> Server<C>
+impl <C> Server <C>
 where C: Coffer + Send + Sync + 'static
 {
+
+    pub fn new(keyring: Keyring, coffer: C) -> Self {
+        Server { keyring: Arc::new(keyring),
+                 coffer: Arc::new(coffer) }
+    }
+
     pub async fn run<T>(self, addr: T)
     where T: ToSocketAddrs
     {
@@ -70,6 +75,7 @@ where C: Coffer + Send + Sync + 'static
                         let coffer = self.coffer.clone();
 
                         let protocol = Protocol::new(tcp_stream, coffer, keyring);
+
                         tokio::spawn(async move {
                             protocol.run().await;
                         });
@@ -82,45 +88,5 @@ where C: Coffer + Send + Sync + 'static
         };
 
         server.await
-    }
-}
-
-pub struct ServerBuilder<C>
-where C: Coffer
-{
-    keyring: Option<Keyring>,
-    coffer: Option<C>
-}
-
-impl <'a, C> ServerBuilder<C>
-where C: Coffer + Default
-{
-    pub fn new() -> ServerBuilder<C> {
-        ServerBuilder {
-            keyring: None,
-            coffer: None
-        }
-    }
-
-    pub fn with_keyring(mut self, keyring: Option<Keyring>) -> ServerBuilder<C> {
-        self.keyring = keyring;
-        self
-    }
-
-    pub fn with_coffer(mut self, coffer: Option<C>) -> ServerBuilder<C> {
-        self.coffer = coffer;
-        self
-    }
-
-    pub fn build(self) -> Result<Server<C>, ServerError> {
-        let keyring = match self.keyring {
-            Some(k) => Arc::new(RwLock::new(k)),
-            None => {let cert = Certificate::new()?;
-                     Arc::new(RwLock::new(Keyring::new(cert)))}
-        };
-
-        let coffer = Arc::new(RwLock::new(self.coffer.unwrap_or_else(|| { C::default() } )));
-
-        Ok(Server {keyring, coffer})
     }
 }

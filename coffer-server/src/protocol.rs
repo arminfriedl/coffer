@@ -9,15 +9,12 @@ use tokio::io::{AsyncRead,
                 AsyncReadExt,
                 AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::sync::RwLock;
 
 use serde_cbor;
 
 use quick_error::quick_error;
 
-use coffer_common::coffer::{CofferValue,
-                            CofferPath,
-                            Coffer};
+use coffer_common::coffer::Coffer;
 use coffer_common::keyring::Keyring;
 use hex;
 
@@ -38,25 +35,23 @@ quick_error! {
 enum State {
     Start,
     Link,
-    Error,
+    Bye,
     End
 }
 
 #[derive(Debug)]
 enum Request {
     Hello(Vec<u8>),
-    Put(Vec<u8>),
-    Get(Vec<u8>),
-    Bye,
-    Error
+    Get,
+    Bye
 }
 
 pub struct Protocol<C>
 where C: Coffer
 {
     stream: TcpStream,
-    coffer: Arc<RwLock<C>>,
-    keyring: Arc<RwLock<Keyring>>,
+    coffer: Arc<C>,
+    keyring: Arc<Keyring>,
     client: Option<Vec<u8>>,
     state: State
 }
@@ -64,11 +59,7 @@ where C: Coffer
 impl<C> Protocol<C>
 where C: Coffer
 {
-    pub fn new(
-        stream: TcpStream,
-        coffer: Arc<RwLock<C>>,
-        keyring: Arc<RwLock<Keyring>>
-    ) -> Protocol<C>
+    pub fn new(stream: TcpStream, coffer: Arc<C>, keyring: Arc<Keyring>) -> Protocol<C>
     {
         let state = State::Start;
         let client = None;
@@ -104,11 +95,9 @@ where C: Coffer
 
         match msg_type {
             0x00 => Request::Hello(message),
-            0x02 => Request::Put(message),
-            0x03 => Request::Get(message),
-            0x63 => Request::Bye,
-            0xff => Request::Error,
-               _ => Request::Error
+            0x02 => Request::Get,
+            0x99 => Request::Bye,
+            _ => panic!{"Invalid message type {}", msg_type}
         }
     }
 
@@ -171,30 +160,19 @@ where C: Coffer
         match (&self.state, event) {
             (State::Start, Request::Hello(pk)) => {
                 debug!{"Reading public key"}
-                self.keyring.write().await
-                    .add_known_key(&pk)
-                    .unwrap();
                 self.client = Some(pk);
                 self.state = State::Link;
             }
 
-            (State::Link, Request::Get(req)) => {
+            (State::Link, Request::Get) => {
                 debug!{"Writing response"}
-                let mut req: CofferPath =
-                    serde_cbor::from_slice(
-                        &self.keyring.read().await
-                            .open(&req)
-                            .unwrap()
-                    ).unwrap();
+                let shard_id = hex::encode(self.client.as_ref().unwrap());
 
-                req.0.insert(0, hex::encode(self.client.as_ref().unwrap()));
-
-                let res = self.coffer.read().await
-                    .get(req)
+                let res = self.coffer
+                    .get_shard(shard_id)
                     .unwrap();
 
-                let response = self.keyring.read().await
-                    .seal(
+                let response = self.keyring.seal(
                         &self.client.as_ref().unwrap(),
                         &serde_cbor::to_vec(&res).unwrap()
                     ).unwrap();
@@ -205,35 +183,11 @@ where C: Coffer
                 // TODO Proper result handling
                 self.stream.write_all(&frame).await.unwrap();
 
-                self.state = State::Link;
+                self.state = State::Bye;
             }
 
-            (State::Link, Request::Put(put)) => {
-                debug!{"Putting secrets"}
-                let mut put: Vec<(CofferPath, CofferValue)> =
-                    serde_cbor::from_slice(
-                        &self.keyring.read().await
-                            .open(&put)
-                            .unwrap()
-                    ).unwrap();
-
-                let key_string = hex::encode(self.client.as_ref().unwrap());
-
-                put.iter_mut().map( |(cp, _cv)| &mut cp.0)
-                    .for_each(|cp| cp.insert(0, key_string.clone()));
-
-                for (coffer_path, coffer_value) in put {
-                    self.coffer.write().await
-                        .put(coffer_path, coffer_value)
-                        .unwrap();
-                }
-
-                self.state = State::Link;
-            }
-
-            (_, Request::Bye) => self.state = State::End,
-
-            (_, Request::Error) => self.state = State::End,
+            (State::Link, Request::Bye) => self.state = State::End,
+            (State::Bye, Request::Bye) => self.state = State::End,
 
             _ => self.state = State::End
         }

@@ -83,12 +83,27 @@ impl Certificate {
         Ok(cbor)
     }
 
+    pub fn public_key(&self) -> Vec<u8> {
+        self.inner.read().public_key.as_ref().to_owned()
+    }
+
+    #[cfg(feature = "export")]
+    pub fn secret_key(&self) -> Vec<u8> {
+        self.inner.read().private_key.as_ref().to_owned()
+    }
+
     pub fn open(&self, c: &[u8]) -> Result<Vec<u8>, CertificateError> {
         let pk = &self.inner.read().public_key;
         let sk = &self.inner.read().private_key;
 
         sealedbox::open(c, pk, sk)
             .map_err(|_| CertificateError::Crypto)
+    }
+
+    pub fn seal(&self, message: &[u8]) -> Result<Vec<u8>, CertificateError> {
+        let pk = &self.inner.read().public_key;
+
+        Ok(sealedbox::seal(message, pk))
     }
 }
 

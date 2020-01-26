@@ -25,7 +25,10 @@
 * Coffer
   - Sharded KV-Store
   - Keys are UTF-8 Strings
-  - Typed values as defined by TOML: String, Integer, Float, Boolean, Date
+  - Typed values as defined by TOML: String, Integer, Float, Boolean
+    - No Dates support
+    - No binary data support
+    - Floats and Integers are 32 bit
 
 * Coffer Server
   A ~coffer-server~ can support multiple clients by means of /sharding/ the
@@ -43,10 +46,9 @@
   Encrypted Authentication: SK of coffer-companion, PK of coffer-server
 
   #+BEGIN_SRC yaml
-    # Names for ids (public keys) of clients
-    [clients]
-    file = "AAAA-AAAA-AAAA-AAAA"
-    bin = "FFFF-FFFF-FFFF-FFFF"
+    # IDs (public keys) of clients
+    file.id = "AAAA-AAAA-AAAA-AAAA"
+    bin.id = "FFFF-FFFF-FFFF-FFFF"
 
     # Secrets for a named client (defined in clients)
     [file]

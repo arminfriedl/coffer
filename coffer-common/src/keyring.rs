@@ -1,6 +1,7 @@
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
+use std::path::Path;
 use std::collections::HashMap;
 
 use quick_error::quick_error;
@@ -36,6 +37,15 @@ impl Keyring {
     pub fn new(certificate: Certificate) -> Keyring {
         Keyring {
             certificate: certificate,
+            known_keys: HashMap::new()
+        }
+    }
+
+    pub fn new_from_path<T>(certificate_path: T) -> Keyring
+    where T: AsRef<Path>
+    {
+        Keyring {
+            certificate: Certificate::from(certificate_path),
             known_keys: HashMap::new()
         }
     }

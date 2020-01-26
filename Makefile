@@ -7,7 +7,7 @@ release:
 	cargo build --release
 
 publish:
-	docker pull clux/muslrust
-	docker run -v $(CURDIR):/volume --rm -t clux/muslrust cargo build --release
+	podman pull clux/muslrust
+	podman run -v .:/volume --rm -t clux/muslrust cargo build --release
 
 .PHONY: default release publish
