@@ -24,3 +24,5 @@ base64 = "^0.11"
 # Key management/Cryptography
 sodiumoxide = "^0.2"
 seckey = "^0.9"
+#Communication
+tokio = { version="^0.2.9", features = ["full"]}

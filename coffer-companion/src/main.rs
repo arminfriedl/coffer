@@ -3,6 +3,7 @@ use structopt::StructOpt;
 
 mod certificate;
 mod encrypt;
+mod client;
 
 #[derive(StructOpt, Debug)]
 enum Args {
@@ -10,7 +11,7 @@ enum Args {
         #[structopt(short, long, parse(from_os_str))]
         out: PathBuf,
         #[structopt(short, long)]
-        info: bool
+        info: bool,
     },
     Encrypt {
         #[structopt(short, long, parse(from_os_str))]
@@ -19,6 +20,10 @@ enum Args {
         yaml: PathBuf,
         #[structopt(short, long, parse(from_os_str))]
         out: PathBuf
+    },
+    Client {
+        #[structopt(short, long, parse(from_os_str))]
+        certificate: PathBuf,
     }
 }
 
@@ -30,6 +35,11 @@ fn main() {
             if info {  certificate::info(out) }
             else { certificate::generate_key(out) }
         }
-        _ => unimplemented![]
+        Args::Encrypt {certificate, yaml, out} => {
+            encrypt::encrypt_yaml(yaml, out, certificate)
+        }
+        Args::Client {certificate} => {
+            client::print_get(certificate)
+        }
     }
 }

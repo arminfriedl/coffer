@@ -2,12 +2,9 @@
 use log::{debug, error, info, trace, warn};
 
 use std::sync::Arc;
-use std::convert::{TryFrom, TryInto};
 use std::net::Shutdown;
 
-use tokio::io::{AsyncRead,
-                AsyncReadExt,
-                AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 
 use serde_cbor;
@@ -16,6 +13,7 @@ use quick_error::quick_error;
 
 use coffer_common::coffer::Coffer;
 use coffer_common::keyring::Keyring;
+
 use hex;
 
 quick_error! {
@@ -84,13 +82,13 @@ where C: Coffer
 
         // TODO restrict msg_size more, otherwise bad client could bring server
         //      to allocate vast amounts of memory
-        let (msg_size, msg_type) = Self::read_header(&mut reader).await
+        let (msg_size, msg_type) = frame::read_header(&mut reader).await
             .unwrap();
 
         // TODO only read message if message expected by message type
         //      currently relies on client sending good message
         //      (0x00 message size)
-        let message = Self::read_message(msg_size, &mut reader).await
+        let message = frame::read_message(msg_size, &mut reader).await
             .unwrap();
 
         match msg_type {
@@ -101,7 +99,54 @@ where C: Coffer
         }
     }
 
-    async fn read_header<T>(reader: &mut T) -> Option<(u64, u8)>
+    async fn transit(&mut self, event: Request)
+    {
+        match (&self.state, event) {
+            (State::Start, Request::Hello(pk)) => {
+                debug!{"Reading public key"}
+                self.client = Some(pk);
+                self.state = State::Link;
+            }
+
+            (State::Link, Request::Get) => {
+                debug!{"Writing response"}
+                let shard_id = hex::encode_upper(self.client.as_ref().unwrap());
+
+                let res = self.coffer
+                    .get_shard(shard_id)
+                    .unwrap();
+
+                let response = self.keyring.seal(
+                        &self.client.as_ref().unwrap(),
+                        &serde_cbor::to_vec(&res).unwrap()
+                    ).unwrap();
+
+                // TODO magic number
+                let frame = frame::framed(0x05u8, response).await;
+                trace!{"OkGet Frame: {:?}", frame}
+                // TODO Proper result handling
+                self.stream.write_all(&frame).await.unwrap();
+                self.stream.flush().await.unwrap();
+
+                self.state = State::Bye;
+            }
+
+            (State::Link, Request::Bye) => self.state = State::End,
+            (State::Bye, Request::Bye) => self.state = State::End,
+
+            _ => self.state = State::End
+        }
+    }
+}
+
+mod frame {
+    #[allow(unused_imports)]
+    use log::{debug, error, info, trace, warn};
+
+    use std::convert::{TryFrom, TryInto};
+    use tokio::io::{AsyncRead, AsyncReadExt};
+
+    pub async fn read_header<T>(reader: &mut T) -> Option<(u64, u8)>
     where T: AsyncRead + Unpin
     {
         let mut header: [u8; 9] = [0u8;9]; // header buffer
@@ -130,7 +175,7 @@ where C: Coffer
         Some((msg_size, msg_type))
     }
 
-    async fn read_message<T>(msg_size: u64, reader: &mut T) -> Option<Vec<u8>>
+    pub async fn read_message<T>(msg_size: u64, reader: &mut T) -> Option<Vec<u8>>
     where T: AsyncRead + Unpin
     {
         // TODO: possible to use unallocated memory instead?
@@ -155,45 +200,7 @@ where C: Coffer
         Some(message)
     }
 
-    async fn transit(&mut self, event: Request)
-    {
-        match (&self.state, event) {
-            (State::Start, Request::Hello(pk)) => {
-                debug!{"Reading public key"}
-                self.client = Some(pk);
-                self.state = State::Link;
-            }
-
-            (State::Link, Request::Get) => {
-                debug!{"Writing response"}
-                let shard_id = hex::encode(self.client.as_ref().unwrap());
-
-                let res = self.coffer
-                    .get_shard(shard_id)
-                    .unwrap();
-
-                let response = self.keyring.seal(
-                        &self.client.as_ref().unwrap(),
-                        &serde_cbor::to_vec(&res).unwrap()
-                    ).unwrap();
-
-                // TODO magic number
-                let frame = Self::framed(0x05u8, response).await;
-                trace!{"OkGet Frame: {:?}", frame}
-                // TODO Proper result handling
-                self.stream.write_all(&frame).await.unwrap();
-
-                self.state = State::Bye;
-            }
-
-            (State::Link, Request::Bye) => self.state = State::End,
-            (State::Bye, Request::Bye) => self.state = State::End,
-
-            _ => self.state = State::End
-        }
-    }
-
-    async fn framed(msg_type: u8, data: Vec<u8>) -> Vec<u8>
+    pub async fn framed(msg_type: u8, data: Vec<u8>) -> Vec<u8>
     {
         trace!{"Creating frame for type: {:?}, data: {:?}", msg_type, data}
 
@@ -212,4 +219,5 @@ where C: Coffer
 
         frame
     }
+
 }

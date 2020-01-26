@@ -74,8 +74,10 @@ impl Coffer for CofferMap {
     {
         let lock = self.read();
 
+        debug!{"Coffer {:?}", *lock}
+
         let coffer_shard = lock.get(shard.as_ref())
-            .ok_or(CofferError::Msg("Shard {} not found"))?;
+            .ok_or(CofferError::Msg("Shard not found"))?;
 
         let mut res = CofferShard(Vec::new());
 

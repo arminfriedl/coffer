@@ -17,3 +17,8 @@ serde_yaml = "0.8"
 serde_cbor = "0.10.2"
 # Executing subcommand
 exec = "0.3.1"
+# Lighter alternative to tokio for
+# driving shared frame creation
+futures = "0.3.1"
+
+coffer-common = { path = "../coffer-common" }
