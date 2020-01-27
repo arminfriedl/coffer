@@ -33,9 +33,6 @@ struct Args {
     /// Address, the coffer server should bind to
     #[structopt(short, long, parse(try_from_str), env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
     address: SocketAddr,
-
-    #[structopt(long, parse(from_os_str))]
-    client: PathBuf
 }
 
 #[tokio::main]
@@ -45,20 +42,22 @@ async fn main() {
 
     _print_banner();
 
+    // create keyring from server certificate
     let mut keyring = Keyring::new_from_path(&args.certificate);
-
-    // read in client key
-    let mut client_key = Vec::new();
-    File::open(&args.client).unwrap().read_to_end(&mut client_key).unwrap();
-    keyring.add_known_key(&client_key).unwrap();
 
     // decrypt secrets file and put into coffer
     let mut secrets_file = File::open(&args.secrets).unwrap();
     let mut secrets_buf = Vec::new();
     secrets_file.read_to_end(&mut secrets_buf).unwrap();
     let secrets_buf_clear = String::from_utf8(keyring.open(&secrets_buf).unwrap()).unwrap();
+
+    // read known client ids from secrets file
+    keyring.add_known_keys_toml(&secrets_buf_clear).unwrap();
+
+    // read secrets from secrets file
     let coffer = CofferMap::from_toml(&secrets_buf_clear);
 
+    // start server
     let server = Server::new(keyring, coffer);
     server.run(args.address).await;
 }
