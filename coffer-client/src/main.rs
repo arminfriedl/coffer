@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Err("Could not spawn sub-command".into())
 }
 
-fn reap_coffer(cmd: &str, args: &Vec<String>) {
+fn reap_coffer(cmd: &str, args: &[String]) {
     let mut cmd = exec::Command::new(cmd);
 
     // TODO Push cmd as first arg if not already set?

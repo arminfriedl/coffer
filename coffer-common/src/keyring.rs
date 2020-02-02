@@ -65,23 +65,31 @@ impl Keyring {
             _ => panic!{"Invalid secrets file"}
         };
 
-        for (_k, v) in clients {
+        self.add_known_keys_toml_table(&clients)?;
 
-            let client = match v {
-                TomlValue::Table(client) => client,
-                _ => panic!{"Invalid secrets file"}
-            };
-
-            match client.get("id") {
-                Some(TomlValue::String(id)) => {
-                    let id = id.to_owned();
-                    self.add_known_key(&hex::decode(id)?)?;
-                },
-                _ => panic!{"Invalid id, only hex encoded ids supported"}
-            }
-        }
+        debug!{"Known keys {:?}", self.known_keys}
 
         Ok(())
+    }
+
+    fn add_known_keys_toml_table(&mut self, toml_table: &toml::value::Table) -> Result<(), KeyringError> {
+         // table has an no id, recourse into subtables
+        if toml_table.get("id").is_none() {
+            debug!{"{:?}", toml_table}
+            for (_key, val) in toml_table.iter() {
+                match val {
+                    TomlValue::Table(subtable) => {
+                        self.add_known_keys_toml_table(subtable)?;
+                    },
+                    _ => panic!{"Invalid secrets file"}
+                }
+            }
+
+            return Ok(());
+        }
+
+        let shard = toml_table.get("id").and_then(|id| id.as_str()).ok_or(KeyringError::Msg("Invalid key parsing state"))?;
+        self.add_known_key(&hex::decode(shard)?)
     }
 
     pub fn add_known_key(&mut self, key: &[u8]) -> Result<(), KeyringError> {
@@ -94,7 +102,7 @@ impl Keyring {
 
     pub fn open(&self, message: &[u8]) -> Result<Vec<u8>, KeyringError> {
         self.certificate.open(message)
-            .map_err(|e| KeyringError::from(e))
+            .map_err(KeyringError::from)
     }
 
     pub fn seal(&self, client: &[u8], message: &[u8]) -> Result<Vec<u8>, KeyringError> {

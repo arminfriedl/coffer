@@ -2,3 +2,14 @@
 id = "F11C86D52A70977D866F813903BC73DB4CB8AC40249DF668475B1BFE48AD1E41"
 key1 = "secret1"
 key2 = "secret2"
+
+[clients]
+[client.1]
+id = "00E4A58C6905C2932F73F4D3AB449507E0166E53ED52F769721618F8C836E736"
+client1key1 = "client1secret"
+client1key2 = "client1secret2"
+
+[client.2]
+id = "D4A39CD8C4695A70F758252E9D877ACE24BD3DE98BC09E90C37C06F99061CD5B"
+client2key1 = "client2secret"
+client2key2 = "client2secret2"

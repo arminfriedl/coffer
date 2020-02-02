@@ -1,0 +1,2 @@
+*.enc filter=lfs diff=lfs merge=lfs -text
+*.cert filter=lfs diff=lfs merge=lfs -text

@@ -2,6 +2,7 @@
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
+use std::fmt::Debug;
 use std::path::Path;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -87,51 +88,51 @@ pub trait Coffer {
             _ => panic!{"Invalid secrets file"}
         };
 
-        /*
-         * Walk through the table of clients, where each client is a table which
-         * is either empty, or contains a table with at least an id and any
-         * number of secrets
-         *
-         * # Example:
-         *
-         * files.id = "AAAA-BBBB-CCCC"
-         * pad.id = "FFFF-EEEE-DDDD"
-         *
-         * [files]
-         * secret_string = "secret value1"
-         * secret_int = 12345
-         * secret_bool = true
-         */
-        for (_k, v) in clients {
+        coffer.from_toml_table(&clients);
 
-            let client = match v {
-                TomlValue::Table(t) => t,
-                _ => panic!{"Invalid secrets file"}
-            };
+        coffer
+    }
 
-            for (k, v) in client.iter() {
-
-                if "id" == k { continue } // ids are for sharding
-
-                let value = match v {
-                    TomlValue::String(s) => CofferValue::String(s.to_owned()),
-                    TomlValue::Integer(i) => CofferValue::Integer(*i as i32),
-                    TomlValue::Float(f) => CofferValue::Float(*f as f32),
-                    TomlValue::Boolean(b) => CofferValue::Boolean(*b),
-                    _ => panic!{"Value {:?} unsupported", v}
-                };
-
-                match client.get("id") {
-                    Some(TomlValue::String(shard)) => {
-                        let shard = shard.to_owned();
-                        let key =  k.to_owned();
-                        coffer.put(CofferKey{shard, key}, value).unwrap();
+    fn from_toml_table(&mut self, toml_table: &toml::value::Table) {
+        // table has an no id, recourse into subtables
+        if toml_table.get("id").is_none() {
+            for (_key, val) in toml_table.iter() {
+                match val {
+                    TomlValue::Table(subtable) => {
+                        self.from_toml_table(subtable);
                     },
                     _ => panic!{"Invalid secrets file"}
                 }
             }
+
+            return;
         }
 
-        return coffer;
+        /*
+         * Parse a single shard/table, this is known to have an id
+         *
+         * [files]
+         * id = "ABC-DEF-GHE"
+         * secret_string = "secret value1"
+         * secret_int = 12345
+         * secret_bool = true
+         */
+        let shard = toml_table.get("id").and_then(|id| id.as_str()).unwrap();
+
+        for (key, val) in toml_table {
+            if "id" == key { continue } // ids are for sharding
+
+            let value = match val {
+                TomlValue::String(s) => CofferValue::String(s.to_owned()),
+                TomlValue::Integer(i) => CofferValue::Integer(*i as i32),
+                TomlValue::Float(f) => CofferValue::Float(*f as f32),
+                TomlValue::Boolean(b) => CofferValue::Boolean(*b),
+                _ => panic!{"Value {:?} unsupported", val}
+            };
+
+            let key =  key.to_owned();
+            let shard = shard.to_string();
+            self.put(CofferKey{shard, key}, value).unwrap();
+        }
     }
 }
