@@ -18,8 +18,8 @@ use coffer_common::coffer::{CofferShard, CofferValue};
 #[derive(StructOpt, Debug)]
 struct Args {
     /// Address of the coffer server
-    #[structopt(short, long, parse(try_from_str), env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
-    server_address: SocketAddr,
+    #[structopt(short, long, env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
+    server_address: String,
 
     #[structopt(short, long, parse(from_os_str), env = "COFFER_CLIENT_CERTIFICATE", hide_env_values = true)]
     certificate: PathBuf,
@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cert = Certificate::new_from_cbor(&args.certificate)?;
 
     debug!{"Connecting to coffer server"}
-    let mut stream: TcpStream = TcpStream::connect(&args.server_address)?;
+    let mut stream: TcpStream = TcpStream::connect(args.server_address)?;
 
     debug!{"Sending hello"}
     let hello = framed(0x00, cert.public_key());

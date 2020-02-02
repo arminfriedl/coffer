@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use std::fs::File;
 use std::io::{Read};
 use structopt::StructOpt;
-use std::net::SocketAddr;
 
 use coffer_common::keyring::Keyring;
 use coffer_common::coffer::Coffer;
@@ -31,8 +30,10 @@ struct Args {
     secrets: PathBuf,
 
     /// Address, the coffer server should bind to
-    #[structopt(short, long, parse(try_from_str), env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
-    address: SocketAddr,
+    #[structopt(short, long, env = "COFFER_SERVER_ADDRESS", default_value = "127.0.0.1:9187")]
+    address: String, // unfortunately we have to take a opaque string here,
+                     // since we can't parse a hostname otherwise.
+                     // Parsers are not customizable yet in structopt
 }
 
 #[tokio::main]
