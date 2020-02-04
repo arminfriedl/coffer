@@ -39,15 +39,15 @@ steps:
   settings:
     base_url: https://git.friedl.net
     api_key:
-      from_secrets: gitea-token
-      files:
-        - coffer-${DRONE_TAG}-x86_64-musl.tar.bz2
-        - coffer-${DRONE_TAG}-x86_64-musl.tar.gz
-      title: coffer ${DRONE_TAG}
-      note: CHANGELOG.md
-      checksum:
-        - md5
-        - sha256
+      from_secret: gitea_token
+    files:
+      - coffer-${DRONE_TAG}-x86_64-musl.tar.bz2
+      - coffer-${DRONE_TAG}-x86_64-musl.tar.gz
+    title: coffer ${DRONE_TAG}
+    note: CHANGELOG.md
+    checksum:
+      - md5
+      - sha256
 
 trigger:
   event:
