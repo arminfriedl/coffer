@@ -1,0 +1,54 @@
+kind: pipeline
+type: docker
+name: default
+
+steps:
+- name: build
+  image: rust
+  commands:
+    - cargo build
+    - cargo test
+
+trigger:
+  event:
+    exclude:
+    - tag
+
+---
+kind: pipeline
+type: docker
+name: release
+
+steps:
+- name: build
+  image: clux/muslrust
+  commands:
+    - cargo build --release
+    - strip target/x86_64-unknown-linux-musl/release/coffer-server
+    - strip target/x86_64-unknown-linux-musl/release/coffer-client
+    - strip target/x86_64-unknown-linux-musl/release/coffer-companion
+
+- name: package
+  image: alpine
+  commands:
+    - tar cjf coffer-${DRONE_TAG}-x86_64-musl.tar.bz2 target/x86_64-unknown-linux-musl/release/coffer-server target/x86_64-unknown-linux-musl/release/coffer-client target/x86_64-unknown-linux-musl/release/coffer-companion
+    - tar czf coffer-${DRONE_TAG}-x86_64-musl.tar.gz target/x86_64-unknown-linux-musl/release/coffer-server target/x86_64-unknown-linux-musl/release/coffer-client target/x86_64-unknown-linux-musl/release/coffer-companion
+
+- name: publish
+  image: plugins/gitea-release
+  settings:
+    base_url: https://git.friedl.net
+    api_key:
+      from_secrets: gitea-token
+      files:
+        - coffer-${DRONE_TAG}-x86_64-musl.tar.bz2
+        - coffer-${DRONE_TAG}-x86_64-musl.tar.gz
+      title: coffer ${DRONE_TAG}
+      note: CHANGELOG.md
+      checksum:
+        - md5
+        - sha256
+
+trigger:
+  event:
+  - tag
