@@ -53,7 +53,7 @@ impl Keyring {
     where T: AsRef<Path>
     {
         Keyring {
-            certificate: Certificate::from(certificate_path),
+            certificate: Certificate::new_from_cbor(certificate_path).unwrap(),
             known_keys: HashMap::new()
         }
     }

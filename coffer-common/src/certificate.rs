@@ -106,10 +106,3 @@ impl Certificate {
         Ok(sealedbox::seal(message, pk))
     }
 }
-
-impl <T: AsRef<Path>> From<T> for Certificate {
-    fn from(path: T) -> Self {
-        Certificate::new_from_cbor(&path)
-            .expect(&format!{"Could not read certificate from {}", path.as_ref().display()})
-    }
-}
