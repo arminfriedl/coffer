@@ -1,12 +1,20 @@
-//! Common certificate handling and encryption
+//! A keypair contianer providing functionality for signing, encryption and
+//! decryption
+//!
+//! # Base libraries
+//! The cryptographic operations exposed by this module are based on the
+//! [NaCl](http://nacl.cr.yp.to/) fork [libsodium](https://libsodium.org) as
+//! exposed by the rust bindings [sodiumoxide](https://crates.io/crates/sodiumoxide).
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
-use std::path::Path;
-use std::io::BufReader;
-use std::fs::File;
-use std::fmt::{Debug, Formatter};
+use std::{
+    path::Path,
+    io::BufReader,
+    fs::File,
+    ops::Deref
+};
 
 use quick_error::quick_error;
 
@@ -25,22 +33,51 @@ quick_error! {
         Io(err: std::io::Error) {
             from()
         }
-        SecKey
+        SecKey {
+            from(CertificateInner)
+        }
         Crypto
     }
 }
 
-/// A secure container for certificates
+/// A secure container for a keypair
 ///
-/// # Certificate
+/// Secure means a best effort approach to:
+/// - Prevent swapping memory to disk
+/// - Zeroing out memory upon dropping
+/// - Prevent other processes and buffer overflows to access the secure memory
+///   area
 ///
-/// A certificate consists of a public and a private key in a secure memory
-/// area. With a certificate data sealed and opened.
+/// These guarantees are currently *not* reliable. If you threat model contains
+/// targeted attacks against coffer memory, additional precautions have to be
+/// taken.
 pub struct Certificate {
     inner: SecKey<CertificateInner>
 }
 
+// The SecKeyReadGuard prevents convenience methods for handing out references
+// to private/public keys (reference outlives SecKeyReadGuard). Hence below
+// macros are shortcut projections that can be used after a read guard is
+// created
+
+// Get the public key
+macro_rules! pk {
+  ($cert:ident) => {
+    &$cert.inner.read().public_key
+  };
+}
+
+// Get the private key
+macro_rules! sk {
+  ($cert:ident) => {
+    &$cert.inner.read().private_key
+  };
+}
+
+// Certificate and its inner SecKey own their
+// raw pointer without any thread local behaviour
 unsafe impl Send for Certificate {}
+// After initialization, certificate is read-only
 unsafe impl Sync for Certificate {}
 
 #[derive(Serialize, Deserialize)]
@@ -49,13 +86,8 @@ struct CertificateInner {
     private_key: box_::SecretKey
 }
 
-impl Debug for CertificateInner {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(fmt, "<Certificate Hidden>")
-    }
-}
-
 impl Certificate {
+  /// Initialize with a generated keypair
     pub fn new() -> Result<Certificate, CertificateError> {
         debug!{"Generating new certificate"}
         let (public_key, private_key) = box_::gen_keypair();
@@ -66,6 +98,7 @@ impl Certificate {
         Ok(Certificate{inner})
     }
 
+    /// Initialize from a serialized certificate in [cbor](https://cbor.io/) format
     pub fn new_from_cbor<T: AsRef<Path>>(path: T) -> Result<Certificate, CertificateError> {
         debug!{"Reading certificate from {}", path.as_ref().display()}
         let f = File::open(path)?;
@@ -76,33 +109,35 @@ impl Certificate {
         Ok(Certificate{inner})
     }
 
+    /// Serialize a certificate to a file in [cbor](https://cbor.io/) format
     #[cfg(feature = "export")]
     pub fn to_cbor(&self) -> Result<Vec<u8>, CertificateError> {
-        let inner_cert = &*self.inner.read();
-        let cbor = serde_cbor::to_vec(inner_cert)?;
+        let read_guard = self.inner.read();
+
+        let cbor = serde_cbor::to_vec(read_guard.deref())?;
+
         Ok(cbor)
     }
 
+    /// Clone the bytes of the public key
     pub fn public_key(&self) -> Vec<u8> {
-        self.inner.read().public_key.as_ref().to_owned()
+        pk!(self).as_ref().to_owned()
     }
 
+    /// Clone the bytes of the private key
     #[cfg(feature = "export")]
     pub fn secret_key(&self) -> Vec<u8> {
-        self.inner.read().private_key.as_ref().to_owned()
+        sk!(self).as_ref().to_owned()
     }
 
+    /// Open a [sealed box](https://download.libsodium.org/doc/public-key_cryptography/sealed_boxes)
     pub fn open(&self, c: &[u8]) -> Result<Vec<u8>, CertificateError> {
-        let pk = &self.inner.read().public_key;
-        let sk = &self.inner.read().private_key;
-
-        sealedbox::open(c, pk, sk)
+        sealedbox::open(c, pk!{self}, sk!{self})
             .map_err(|_| CertificateError::Crypto)
     }
 
+    /// Seal a message in a [sealed box](https://download.libsodium.org/doc/public-key_cryptography/sealed_boxes)
     pub fn seal(&self, message: &[u8]) -> Result<Vec<u8>, CertificateError> {
-        let pk = &self.inner.read().public_key;
-
-        Ok(sealedbox::seal(message, pk))
+        Ok(sealedbox::seal(message, pk!{self}))
     }
 }

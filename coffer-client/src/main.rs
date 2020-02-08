@@ -1,8 +1,11 @@
+//! # Coffer client
+//!
+//! Retrieve a secret shard from a `coffer-server`. Secrets in the shard are set
+//! as environment variables for the spawned subcommand `cmd`.
+
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use env_logger;
-
-use structopt::StructOpt;
 
 use std:: {
     net::TcpStream,
@@ -12,9 +15,14 @@ use std:: {
     convert::{TryInto, TryFrom}
 };
 
-use coffer_common::certificate::Certificate;
-use coffer_common::coffer::{CofferShard, CofferValue};
+use coffer_common::{
+    coffer::{CofferShard, CofferValue},
+    certificate::Certificate
+};
 
+use structopt::StructOpt;
+
+/// Client for setting up the environment from coffer server secrets
 #[derive(StructOpt, Debug)]
 struct Args {
     /// Address of the coffer server
@@ -75,6 +83,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     Err("Could not spawn sub-command".into())
 }
 
+/// Replaces the `coffer-client` process image with
+/// the subcommand `cmd` with `args`
 fn reap_coffer(cmd: &str, args: &[String]) {
     let mut cmd = exec::Command::new(cmd);
 
