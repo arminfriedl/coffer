@@ -44,7 +44,7 @@ pub struct Keyring {
 impl Keyring {
     pub fn new(certificate: Certificate) -> Keyring {
         Keyring {
-            certificate: certificate,
+            certificate,
             known_keys: HashMap::new()
         }
     }

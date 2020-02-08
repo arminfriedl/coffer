@@ -10,7 +10,7 @@ pub fn generate_key(out: PathBuf) {
     let cert = certificate.to_cbor().unwrap();
 
     let mut writer = File::create(&out)
-        .expect(&format!{"Could not create out file {}", &out.display()});
+        .unwrap_or_else(|_| panic!{"Could not create out file {}", &out.display()});
 
     writer.write_all(&cert).unwrap();
 }

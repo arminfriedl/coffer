@@ -7,7 +7,7 @@ use std::sync::RwLock;
 use std::sync::RwLockReadGuard;
 use std::sync::RwLockWriteGuard;
 
-use std::collections::HashMap;
+use std::collections::hash_map::{HashMap, Entry};
 
 use coffer_common::coffer::*;
 
@@ -34,8 +34,10 @@ impl Coffer for CofferMap {
 
         match lock.get_mut(&key.shard) {
             Some(shard) => {
-                if shard.contains_key(&key.key) { Err(CofferError::Msg("Key exists")) }
-                else { shard.insert(key.key, value); Ok(()) }
+                match shard.entry(key.key) {
+                    Entry::Occupied(_) => Err(CofferError::Msg("Key exists")),
+                    Entry::Vacant(v) => { v.insert(value); Ok(()) }
+                }
             }
             None => {
                 lock.insert(key.shard.clone(), HashMap::new());

@@ -5,7 +5,7 @@ use env_logger;
 use structopt::StructOpt;
 
 use std:: {
-    net::{SocketAddr, TcpStream},
+    net::TcpStream,
     error::Error,
     path::PathBuf,
     io::{Write, Read},
