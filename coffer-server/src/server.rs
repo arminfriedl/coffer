@@ -59,7 +59,7 @@ where C: Coffer + Send + Sync + 'static
 
         debug!{"Binding to socket {:?}", socket}
         let mut listener = TcpListener::bind(socket).await
-            .expect(format!{"Could not bind to socket {}", socket}.as_str());
+            .expect("Could not bind to socket");
 
         let server = async move {
             let mut incoming = listener.incoming();

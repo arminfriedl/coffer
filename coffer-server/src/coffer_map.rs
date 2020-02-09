@@ -7,7 +7,7 @@ use std::sync::RwLock;
 use std::sync::RwLockReadGuard;
 use std::sync::RwLockWriteGuard;
 
-use std::collections::HashMap;
+use std::collections::hash_map::{HashMap, Entry};
 
 use coffer_common::coffer::*;
 
@@ -29,13 +29,15 @@ impl CofferMap {
 }
 
 impl Coffer for CofferMap {
-    fn put(&mut self, key: CofferKey, value: CofferValue) -> CofferResult<()> {
+  fn put(&mut self, key: CofferKey, value: CofferValue) -> CofferResult<()> {
         let mut lock = self.write();
 
         match lock.get_mut(&key.shard) {
             Some(shard) => {
-                if shard.contains_key(&key.key) { Err(CofferError::Msg("Key exists")) }
-                else { shard.insert(key.key, value); Ok(()) }
+                match shard.entry(key.key) {
+                    Entry::Occupied(_) => Err(CofferError::Msg("Key exists")),
+                    Entry::Vacant(v) => { v.insert(value); Ok(()) }
+                }
             }
             None => {
                 lock.insert(key.shard.clone(), HashMap::new());
@@ -59,33 +61,29 @@ impl Coffer for CofferMap {
         }
     }
 
-    fn get(&self, key: &CofferKey) -> CofferResult<CofferValue> {
+    fn get(&self, key: &CofferKey) -> Option<CofferValue> {
         let lock = self.read();
 
-        let res = lock.get(&key.shard)
+        lock.get(&key.shard)
             .and_then( |shard| { shard.get(&key.key) } )
-            .ok_or(CofferError::Msg("Key not found"))?;
-
-        Ok(res.clone())
+            .map(|o| o.clone())
     }
 
-    fn get_shard<T>(&self, shard: T) -> CofferResult<CofferShard>
+    fn get_shard<T>(&self, shard: T) -> Option<CofferShard>
     where T: AsRef<str>
     {
         let lock = self.read();
 
         debug!{"Coffer {:?}", *lock}
 
-        let coffer_shard = lock.get(shard.as_ref())
-            .ok_or(CofferError::Msg("Shard not found"))?;
+        let map_to_vec = |map: &HashMap<String, CofferValue>| {
+            map.iter()
+               .map(|(k,v)| (k.clone(), v.clone()))
+               .collect::<Vec<(String, CofferValue)>>()
+        };
 
-        let mut res = CofferShard(Vec::new());
-
-        for (k,v) in coffer_shard {
-            res.0.push((k.clone(), v.clone()));
-        }
-
-        Ok(res)
+        lock.get(shard.as_ref())
+            .and_then(|s| Some(CofferShard(map_to_vec(s))))
     }
 }
 

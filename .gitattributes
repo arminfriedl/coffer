@@ -1,2 +1,4 @@
 *.enc filter=lfs diff=lfs merge=lfs -text
 *.cert filter=lfs diff=lfs merge=lfs -text
+overview.png filter=lfs diff=lfs merge=lfs -text
+overview.svg filter=lfs diff=lfs merge=lfs -text
