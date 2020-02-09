@@ -1,11 +1,11 @@
-//! A keypair contianer providing functionality for signing, encryption and
+//! A keypair container providing functionality for signing, encryption and
 //! decryption
 //!
 //! # Base libraries
 //! The cryptographic operations exposed by this module are based on the
 //! [NaCl](http://nacl.cr.yp.to/) fork [libsodium](https://libsodium.org) as
 //! exposed by the rust bindings [sodiumoxide](https://crates.io/crates/sodiumoxide).
-
+//!
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
@@ -19,8 +19,7 @@ use std::{
 use quick_error::quick_error;
 
 use seckey::SecKey;
-use sodiumoxide::crypto::box_;
-use sodiumoxide::crypto::sealedbox;
+use sodiumoxide::crypto::{box_, sealedbox};
 use serde::{Serialize, Deserialize};
 use serde_cbor;
 
