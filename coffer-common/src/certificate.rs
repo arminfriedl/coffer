@@ -13,8 +13,10 @@ use std::{
     path::Path,
     io::BufReader,
     fs::File,
-    ops::Deref
 };
+
+#[allow(unused_imports)]
+use std::ops::Deref; // we use this but rustc doesn't know
 
 use quick_error::quick_error;
 
