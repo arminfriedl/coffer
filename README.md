@@ -1,5 +1,5 @@
 # Coffer 
-[![Build Status](https://drone.friedl.net/api/badges/incubator/coffer/status.svg)](https://drone.friedl.net/incubator/coffer)
+[![Build Status](https://drone.friedl.net/api/badges/incubator/coffer/status.svg?ref=refs/heads/develop)](https://drone.friedl.net/incubator/coffer)
 
 Coffer is a collection of tools for the simple but secure management of
 application configuration.
