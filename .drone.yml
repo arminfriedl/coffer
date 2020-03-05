@@ -24,15 +24,26 @@ steps:
   image: clux/muslrust
   commands:
     - cargo build --release
-    - strip target/x86_64-unknown-linux-musl/release/coffer-server
-    - strip target/x86_64-unknown-linux-musl/release/coffer-client
-    - strip target/x86_64-unknown-linux-musl/release/coffer-companion
+    - mkdir coffer-${DRONE_TAG}-x86_64-musl
+    - mv target/x86_64-unknown-linux-musl/release/coffer-server \
+         target/x86_64-unknown-linux-musl/release/coffer-client \
+         target/x86_64-unknown-linux-musl/release/coffer-companion \
+         coffer-${DRONE_TAG}-x86_64-musl
+    - strip coffer-${DRONE_TAG}-x86_64-musl/coffer-server
+    - strip coffer-${DRONE_TAG}-x86_64-musl/coffer-client
+    - strip coffer-${DRONE_TAG}-x86_64-musl/coffer-companion
 
 - name: package
   image: alpine
   commands:
-    - tar cjf coffer-${DRONE_TAG}-x86_64-musl.tar.bz2 target/x86_64-unknown-linux-musl/release/coffer-server target/x86_64-unknown-linux-musl/release/coffer-client target/x86_64-unknown-linux-musl/release/coffer-companion
-    - tar czf coffer-${DRONE_TAG}-x86_64-musl.tar.gz target/x86_64-unknown-linux-musl/release/coffer-server target/x86_64-unknown-linux-musl/release/coffer-client target/x86_64-unknown-linux-musl/release/coffer-companion
+    - tar cjf coffer-${DRONE_TAG}-x86_64-musl.tar.bz2 \
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-server \
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-client \
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-companion
+    - tar czf coffer-${DRONE_TAG}-x86_64-musl.tar.gz \
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-server \
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-client \
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-companion
 
 - name: publish
   image: plugins/gitea-release
