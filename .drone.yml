@@ -25,9 +25,9 @@ steps:
   commands:
     - cargo build --release
     - mkdir coffer-${DRONE_TAG}-x86_64-musl
-    - mv target/x86_64-unknown-linux-musl/release/coffer-server \
-         target/x86_64-unknown-linux-musl/release/coffer-client \
-         target/x86_64-unknown-linux-musl/release/coffer-companion \
+    - mv target/x86_64-unknown-linux-musl/release/coffer-server
+         target/x86_64-unknown-linux-musl/release/coffer-client
+         target/x86_64-unknown-linux-musl/release/coffer-companion
          coffer-${DRONE_TAG}-x86_64-musl
     - strip coffer-${DRONE_TAG}-x86_64-musl/coffer-server
     - strip coffer-${DRONE_TAG}-x86_64-musl/coffer-client
@@ -36,13 +36,13 @@ steps:
 - name: package
   image: alpine
   commands:
-    - tar cjf coffer-${DRONE_TAG}-x86_64-musl.tar.bz2 \
-              coffer-${DRONE_TAG}-x86_64-musl/coffer-server \
-              coffer-${DRONE_TAG}-x86_64-musl/coffer-client \
+    - tar cjf coffer-${DRONE_TAG}-x86_64-musl.tar.bz2
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-server
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-client
               coffer-${DRONE_TAG}-x86_64-musl/coffer-companion
-    - tar czf coffer-${DRONE_TAG}-x86_64-musl.tar.gz \
-              coffer-${DRONE_TAG}-x86_64-musl/coffer-server \
-              coffer-${DRONE_TAG}-x86_64-musl/coffer-client \
+    - tar czf coffer-${DRONE_TAG}-x86_64-musl.tar.gz
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-server
+              coffer-${DRONE_TAG}-x86_64-musl/coffer-client
               coffer-${DRONE_TAG}-x86_64-musl/coffer-companion
 
 - name: publish
