@@ -68,7 +68,7 @@ certificates are distributed and kept secret according to your threat model. An
 attacker in control of a certificate can steal secret configuration!
 
 Coffer does not assume a trust anchor for you. Instead, you are free to choose
-your own trust anchor according. In a simple personal server setup this might
+your own trust anchor. In a simple personal server setup this might
 mean just distributing certificates by hand. In a more complex, corporate
 environment you may want to set up a secure, central authority. 
 
