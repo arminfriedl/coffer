@@ -1,0 +1,21 @@
+version: "3"
+
+services:
+  server:
+    container_name: server
+    build:
+      context: ./server/
+    networks:
+      - coffer
+
+  client:
+    container_name: client
+    build:
+      context: ./client/
+    networks:
+      - coffer
+    depends_on:
+      - server
+
+networks:
+  coffer:
